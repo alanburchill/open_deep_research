@@ -225,15 +225,13 @@ async def supervisor_should_continue(state: ReportState) -> Literal["supervisor_
 async def research_agent(state: SectionState, config: RunnableConfig):
     """LLM decides whether to call a tool or not"""
     
-    # Get configuration
+    # Get configuration and enforce Foundry Local usage
     configurable = Configuration.from_runnable_config(config)
-    # Use Foundry Local model and API URL from .env if present
-    researcher_model = get_config_value(getattr(configurable, 'foundry_local_model', None)) or get_config_value(configurable.researcher_model)
+    researcher_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
     foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
-    llm_kwargs = {}
-    if foundry_base_url:
-        llm_kwargs["api_base"] = foundry_base_url
-    llm = init_chat_model(model=researcher_model, **llm_kwargs)
+    if not researcher_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm = init_chat_model(model=researcher_model, api_base=foundry_base_url)
 
     # Get tools based on configuration
     research_tool_list, _ = get_research_tools(config)
