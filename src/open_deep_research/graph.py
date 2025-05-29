@@ -81,7 +81,7 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
-    writer_model = init_chat_model(model=foundry_model, **llm_kwargs)
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs)
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -101,7 +101,7 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     system_instructions_sections = report_planner_instructions.format(topic=topic, report_organization=report_structure, context=source_str, feedback=feedback)
 
     # Initialize planner with Foundry Local
-    planner_llm = init_chat_model(model=foundry_model, **llm_kwargs)
+    planner_llm = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs)
     structured_llm = planner_llm.with_structured_output(Sections)
     # planner_provider = get_config_value(configurable.planner_provider)
     # planner_model = get_config_value(configurable.planner_model)
@@ -202,7 +202,7 @@ async def generate_queries(state: SectionState, config: RunnableConfig):
     llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
-    writer_model = init_chat_model(model=foundry_model, **llm_kwargs)
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs)
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -290,7 +290,7 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
     llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
-    writer_model = init_chat_model(model=foundry_model, **llm_kwargs) 
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs) 
 
     section_content = await writer_model.ainvoke([SystemMessage(content=section_writer_instructions),
                                            HumanMessage(content=section_writer_inputs_formatted)])
@@ -309,7 +309,7 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                                                                                number_of_follow_up_queries=configurable.number_of_queries)
 
     # Initialize reflection model with Foundry Local
-    reflection_model = init_chat_model(model=foundry_model, **llm_kwargs).with_structured_output(Feedback)
+    reflection_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs).with_structured_output(Feedback)
     # Generate feedback
     feedback = await reflection_model.ainvoke([SystemMessage(content=section_grader_instructions_formatted),
                                         HumanMessage(content=section_grader_message)])
@@ -362,7 +362,7 @@ async def write_final_sections(state: SectionState, config: RunnableConfig):
     llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
-    writer_model = init_chat_model(model=foundry_model, **llm_kwargs) 
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs) 
     
     section_content = await writer_model.ainvoke([SystemMessage(content=system_instructions),
                                            HumanMessage(content="Generate a report section based on the provided sources.")])
