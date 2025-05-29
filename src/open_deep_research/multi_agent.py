@@ -111,10 +111,13 @@ async def supervisor(state: ReportState, config: RunnableConfig):
 
     # Get configuration
     configurable = Configuration.from_runnable_config(config)
-    supervisor_model = get_config_value(configurable.supervisor_model)
-    
-    # Initialize the model
-    llm = init_chat_model(model=supervisor_model)
+    # Use Foundry Local model and API URL from .env if present
+    supervisor_model = get_config_value(getattr(configurable, 'foundry_local_model', None)) or get_config_value(configurable.supervisor_model)
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    llm_kwargs = {}
+    if foundry_base_url:
+        llm_kwargs["api_base"] = foundry_base_url
+    llm = init_chat_model(model=supervisor_model, **llm_kwargs)
     
     # If sections have been completed, but we don't yet have the final report, then we need to initiate writing the introduction and conclusion
     if state.get("completed_sections") and not state.get("final_report"):
@@ -224,10 +227,13 @@ async def research_agent(state: SectionState, config: RunnableConfig):
     
     # Get configuration
     configurable = Configuration.from_runnable_config(config)
-    researcher_model = get_config_value(configurable.researcher_model)
-    
-    # Initialize the model
-    llm = init_chat_model(model=researcher_model)
+    # Use Foundry Local model and API URL from .env if present
+    researcher_model = get_config_value(getattr(configurable, 'foundry_local_model', None)) or get_config_value(configurable.researcher_model)
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    llm_kwargs = {}
+    if foundry_base_url:
+        llm_kwargs["api_base"] = foundry_base_url
+    llm = init_chat_model(model=researcher_model, **llm_kwargs)
 
     # Get tools based on configuration
     research_tool_list, _ = get_research_tools(config)
