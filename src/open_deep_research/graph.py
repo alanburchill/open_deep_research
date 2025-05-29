@@ -78,7 +78,7 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
     if not foundry_model or not foundry_base_url:
         raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
-    llm_kwargs = {"api_base": foundry_base_url}
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
     writer_model = init_chat_model(model=foundry_model, **llm_kwargs)
@@ -199,7 +199,7 @@ async def generate_queries(state: SectionState, config: RunnableConfig):
     foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
     if not foundry_model or not foundry_base_url:
         raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
-    llm_kwargs = {"api_base": foundry_base_url}
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
     writer_model = init_chat_model(model=foundry_model, **llm_kwargs)
@@ -287,7 +287,7 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
     foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
     if not foundry_model or not foundry_base_url:
         raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
-    llm_kwargs = {"api_base": foundry_base_url}
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
     writer_model = init_chat_model(model=foundry_model, **llm_kwargs) 
@@ -359,7 +359,7 @@ async def write_final_sections(state: SectionState, config: RunnableConfig):
     foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
     if not foundry_model or not foundry_base_url:
         raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
-    llm_kwargs = {"api_base": foundry_base_url}
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
     # Initialize writer model with Foundry Local
     writer_model = init_chat_model(model=foundry_model, **llm_kwargs) 
