@@ -111,12 +111,12 @@ async def supervisor(state: ReportState, config: RunnableConfig):
 
     # Get configuration
     configurable = Configuration.from_runnable_config(config)
-    # Use Foundry Local model and API URL from .env if present
-    supervisor_model = get_config_value(getattr(configurable, 'foundry_local_model', None)) or get_config_value(configurable.supervisor_model)
+    # Use Foundry Local model and API URL from .env ONLY, do not fallback
+    supervisor_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
     foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
-    llm_kwargs = {}
-    if foundry_base_url:
-        llm_kwargs["api_base"] = foundry_base_url
+    if not supervisor_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm_kwargs = {"api_base": foundry_base_url}
     llm = init_chat_model(model=supervisor_model, **llm_kwargs)
     
     # If sections have been completed, but we don't yet have the final report, then we need to initiate writing the introduction and conclusion
