@@ -78,10 +78,15 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
         report_structure = str(report_structure)
 
     # Set writer model (model used for query writing)
-    writer_provider = get_config_value(configurable.writer_provider)
-    writer_model_name = get_config_value(configurable.writer_model)
-    writer_model_kwargs = get_config_value(configurable.writer_model_kwargs or {})
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, model_kwargs=writer_model_kwargs) 
+    # Use Foundry Local model and API URL from .env if present
+    foundry_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    llm_kwargs = {}
+    if foundry_base_url:
+        llm_kwargs["api_base"] = foundry_base_url
+    # Use Foundry Local for all LLM calls if configured, else fallback to original
+    writer_model_name = foundry_model or get_config_value(configurable.writer_model)
+    writer_model = init_chat_model(model=writer_model_name, **llm_kwargs)
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -101,9 +106,11 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     system_instructions_sections = report_planner_instructions.format(topic=topic, report_organization=report_structure, context=source_str, feedback=feedback)
 
     # Set the planner
-    planner_provider = get_config_value(configurable.planner_provider)
-    planner_model = get_config_value(configurable.planner_model)
-    planner_model_kwargs = get_config_value(configurable.planner_model_kwargs or {})
+    planner_model = foundry_model or get_config_value(configurable.planner_model)
+    planner_llm = init_chat_model(model=planner_model, **llm_kwargs)
+    # planner_provider = get_config_value(configurable.planner_provider)
+    # planner_model = get_config_value(configurable.planner_model)
+    # planner_model_kwargs = get_config_value(configurable.planner_model_kwargs or {})
 
     # Report planner instructions
     planner_message = """Generate the sections of the report. Your response must include a 'sections' field containing a list of sections. 
