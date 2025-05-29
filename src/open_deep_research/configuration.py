@@ -50,6 +50,9 @@ class Configuration:
     # Multi-agent specific configuration
     supervisor_model: str = "openai:gpt-4.1" # Model for supervisor agent in multi-agent setup
     researcher_model: str = "openai:gpt-4.1" # Model for research agents in multi-agent setup 
+    # Local Foundry LLM configuration
+    foundry_local_model: Optional[str] = None  # Name of the local Foundry model
+    foundry_local_api_url: Optional[str] = None  # Base URL for local Foundry API
 
     @classmethod
     def from_runnable_config(
