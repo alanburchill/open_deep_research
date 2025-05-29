@@ -30,8 +30,11 @@ from open_deep_research.state import Section
     
 def get_config_value(value):
     """
-    Helper function to handle string, dict, and enum cases of configuration values
+    Helper function to handle string, dict, enum cases of configuration values.
+    Returns None if value is None.
     """
+    if value is None:
+        return None
     if isinstance(value, str):
         return value
     elif isinstance(value, dict):
