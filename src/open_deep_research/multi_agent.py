@@ -111,10 +111,13 @@ async def supervisor(state: ReportState, config: RunnableConfig):
 
     # Get configuration
     configurable = Configuration.from_runnable_config(config)
-    supervisor_model = get_config_value(configurable.supervisor_model)
-    
-    # Initialize the model
-    llm = init_chat_model(model=supervisor_model)
+    # Use Foundry Local model and API URL from .env ONLY, do not fallback
+    supervisor_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    if not supervisor_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm_kwargs = {"api_base": foundry_base_url}
+    llm = init_chat_model(model=supervisor_model, model_provider="openai", **llm_kwargs)
     
     # If sections have been completed, but we don't yet have the final report, then we need to initiate writing the introduction and conclusion
     if state.get("completed_sections") and not state.get("final_report"):
@@ -222,12 +225,13 @@ async def supervisor_should_continue(state: ReportState) -> Literal["supervisor_
 async def research_agent(state: SectionState, config: RunnableConfig):
     """LLM decides whether to call a tool or not"""
     
-    # Get configuration
+    # Get configuration and enforce Foundry Local usage
     configurable = Configuration.from_runnable_config(config)
-    researcher_model = get_config_value(configurable.researcher_model)
-    
-    # Initialize the model
-    llm = init_chat_model(model=researcher_model)
+    researcher_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    if not researcher_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm = init_chat_model(model=researcher_model, model_provider="openai", api_base=foundry_base_url)
 
     # Get tools based on configuration
     research_tool_list, _ = get_research_tools(config)

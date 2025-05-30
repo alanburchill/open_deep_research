@@ -64,24 +64,24 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
 
     # Concatenate feedback on the report plan into a single string
     feedback = " /// ".join(feedback_list) if feedback_list else ""
-
-    # Get configuration
+    # Get general configuration
     configurable = Configuration.from_runnable_config(config)
     report_structure = configurable.report_structure
     number_of_queries = configurable.number_of_queries
     search_api = get_config_value(configurable.search_api)
-    search_api_config = configurable.search_api_config or {}  # Get the config dict, default to empty
+    search_api_config = configurable.search_api_config or {}
     params_to_pass = get_search_params(search_api, search_api_config)  # Filter parameters
 
-    # Convert JSON object to string if necessary
-    if isinstance(report_structure, dict):
-        report_structure = str(report_structure)
+    # Get configuration for Foundry Local
+    configurable = Configuration.from_runnable_config(config)
+    foundry_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    if not foundry_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
 
-    # Set writer model (model used for query writing)
-    writer_provider = get_config_value(configurable.writer_provider)
-    writer_model_name = get_config_value(configurable.writer_model)
-    writer_model_kwargs = get_config_value(configurable.writer_model_kwargs or {})
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, model_kwargs=writer_model_kwargs) 
+    # Initialize writer model with Foundry Local
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs)
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -108,33 +108,20 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     # Format system instructions
     system_instructions_sections = report_planner_instructions.format(topic=topic, report_organization=report_structure, context=source_str, feedback=feedback)
 
-    # Set the planner
-    planner_provider = get_config_value(configurable.planner_provider)
-    planner_model = get_config_value(configurable.planner_model)
-    planner_model_kwargs = get_config_value(configurable.planner_model_kwargs or {})
+    # Initialize planner with Foundry Local
+    planner_llm = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs)
+    structured_llm = planner_llm.with_structured_output(Sections)
+    # planner_provider = get_config_value(configurable.planner_provider)
+    # planner_model = get_config_value(configurable.planner_model)
+    # planner_model_kwargs = get_config_value(configurable.planner_model_kwargs or {})
 
     # Report planner instructions
-    planner_message = """Generate the sections of the report. Your response must include a 'sections' field containing a list of sections. 
-                        Each section must have: name, description, research, and content fields."""
-
-    # Run the planner
-    if planner_model == "claude-3-7-sonnet-latest":
-        # Allocate a thinking budget for claude-3-7-sonnet-latest as the planner model
-        planner_llm = init_chat_model(model=planner_model, 
-                                      model_provider=planner_provider, 
-                                      max_tokens=20_000, 
-                                      thinking={"type": "enabled", "budget_tokens": 16_000})
-
-    else:
-        # With other models, thinking tokens are not specifically allocated
-        planner_llm = init_chat_model(model=planner_model, 
-                                      model_provider=planner_provider,
-                                      model_kwargs=planner_model_kwargs)
-    
-    # Generate the report sections
-    structured_llm = planner_llm.with_structured_output(Sections)
-    report_sections = await structured_llm.ainvoke([SystemMessage(content=system_instructions_sections),
-                                             HumanMessage(content=planner_message)])
+    planner_message = "Generate the sections of the report. Your response must include a 'sections' field containing a list of sections. Each section must have: name, description, research, and content fields."
+    # Generate the report sections with Foundry Local planner
+    report_sections = await structured_llm.ainvoke([
+        SystemMessage(content=system_instructions_sections),
+        HumanMessage(content=planner_message)
+    ])
 
     # Get sections
     sections = report_sections.sections
@@ -215,11 +202,15 @@ async def generate_queries(state: SectionState, config: RunnableConfig):
     configurable = Configuration.from_runnable_config(config)
     number_of_queries = configurable.number_of_queries
 
-    # Generate queries 
-    writer_provider = get_config_value(configurable.writer_provider)
-    writer_model_name = get_config_value(configurable.writer_model)
-    writer_model_kwargs = get_config_value(configurable.writer_model_kwargs or {})
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, model_kwargs=writer_model_kwargs) 
+    # Enforce Foundry Local usage
+    foundry_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    if not foundry_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
+
+    # Initialize writer model with Foundry Local
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs)
     structured_llm = writer_model.with_structured_output(Queries)
 
     # Format system instructions
@@ -299,11 +290,15 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                                                              context=source_str, 
                                                              section_content=section.content)
 
-    # Generate section  
-    writer_provider = get_config_value(configurable.writer_provider)
-    writer_model_name = get_config_value(configurable.writer_model)
-    writer_model_kwargs = get_config_value(configurable.writer_model_kwargs or {})
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, model_kwargs=writer_model_kwargs) 
+    # Enforce Foundry Local usage
+    foundry_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    if not foundry_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
+
+    # Initialize writer model with Foundry Local
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs) 
 
     section_content = await writer_model.ainvoke([SystemMessage(content=section_writer_instructions),
                                            HumanMessage(content=section_writer_inputs_formatted)])
@@ -321,20 +316,8 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                                                                                section=section.content, 
                                                                                number_of_follow_up_queries=configurable.number_of_queries)
 
-    # Use planner model for reflection
-    planner_provider = get_config_value(configurable.planner_provider)
-    planner_model = get_config_value(configurable.planner_model)
-    planner_model_kwargs = get_config_value(configurable.planner_model_kwargs or {})
-
-    if planner_model == "claude-3-7-sonnet-latest":
-        # Allocate a thinking budget for claude-3-7-sonnet-latest as the planner model
-        reflection_model = init_chat_model(model=planner_model, 
-                                           model_provider=planner_provider, 
-                                           max_tokens=20_000, 
-                                           thinking={"type": "enabled", "budget_tokens": 16_000}).with_structured_output(Feedback)
-    else:
-        reflection_model = init_chat_model(model=planner_model, 
-                                           model_provider=planner_provider, model_kwargs=planner_model_kwargs).with_structured_output(Feedback)
+    # Initialize reflection model with Foundry Local
+    reflection_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs).with_structured_output(Feedback)
     # Generate feedback
     feedback = await reflection_model.ainvoke([SystemMessage(content=section_grader_instructions_formatted),
                                         HumanMessage(content=section_grader_message)])
@@ -379,11 +362,15 @@ async def write_final_sections(state: SectionState, config: RunnableConfig):
     # Format system instructions
     system_instructions = final_section_writer_instructions.format(topic=topic, section_name=section.name, section_topic=section.description, context=completed_report_sections)
 
-    # Generate section  
-    writer_provider = get_config_value(configurable.writer_provider)
-    writer_model_name = get_config_value(configurable.writer_model)
-    writer_model_kwargs = get_config_value(configurable.writer_model_kwargs or {})
-    writer_model = init_chat_model(model=writer_model_name, model_provider=writer_provider, model_kwargs=writer_model_kwargs) 
+    # Enforce Foundry Local usage
+    foundry_model = get_config_value(getattr(configurable, 'foundry_local_model', None))
+    foundry_base_url = get_config_value(getattr(configurable, 'foundry_local_api_url', None))
+    if not foundry_model or not foundry_base_url:
+        raise RuntimeError("FOUNDRY_LOCAL_MODEL and FOUNDRY_LOCAL_API_URL must be set in your .env to use the local LLM.")
+    llm_kwargs = {"api_base": foundry_base_url, "model_provider": "foundry"}
+
+    # Initialize writer model with Foundry Local
+    writer_model = init_chat_model(model=foundry_model, model_provider="openai", **llm_kwargs) 
     
     section_content = await writer_model.ainvoke([SystemMessage(content=system_instructions),
                                            HumanMessage(content="Generate a report section based on the provided sources.")])

@@ -48,6 +48,7 @@ class Configuration:
     writer_model_kwargs: Optional[Dict[str, Any]] = None # kwargs for writer_model
     
     # Multi-agent specific configuration
+<<<<<<< HEAD
     supervisor_model: str = "phi-4-mini-reasoning"  # Model for supervisor agent in multi-agent setup
     researcher_model: str = "phi-4-mini-reasoning" # Model for research agents in multi-agent setup 
 
@@ -66,6 +67,13 @@ class Configuration:
         if self.writer_model_kwargs is None:
             self.writer_model_kwargs = {}
         self.writer_model_kwargs.setdefault("base_url", base_url)
+=======
+    supervisor_model: str = "openai:gpt-4.1" # Model for supervisor agent in multi-agent setup
+    researcher_model: str = "openai:gpt-4.1" # Model for research agents in multi-agent setup 
+    # Local Foundry LLM configuration
+    foundry_local_model: Optional[str] = None  # Name of the local Foundry model
+    foundry_local_api_url: Optional[str] = None  # Base URL for local Foundry API
+>>>>>>> b21ce7f9c7d9efc14b34fbcbca6dc00cbf6386fb
 
     @classmethod
     def from_runnable_config(
