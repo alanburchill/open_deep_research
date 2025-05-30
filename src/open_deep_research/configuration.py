@@ -40,16 +40,32 @@ class Configuration:
     # Graph-specific configuration
     number_of_queries: int = 2 # Number of search queries to generate per iteration
     max_search_depth: int = 2 # Maximum number of reflection + search iterations
-    planner_provider: str = "anthropic"  # Defaults to Anthropic as provider
-    planner_model: str = "claude-3-7-sonnet-latest" # Defaults to claude-3-7-sonnet-latest
+    planner_provider: str = "openai"  # Defaults to OpenAI as provider
+    planner_model: str = "phi-3.5-mini" # Defaults to claude-3-7-sonnet-latest
     planner_model_kwargs: Optional[Dict[str, Any]] = None # kwargs for planner_model
-    writer_provider: str = "anthropic" # Defaults to Anthropic as provider
-    writer_model: str = "claude-3-5-sonnet-latest" # Defaults to claude-3-5-sonnet-latest
+    writer_provider: str = "openai" # Defaults to OpenAI as provider
+    writer_model: str = "phi-3.5-mini" # Defaults to claude-3-5-sonnet-latest
     writer_model_kwargs: Optional[Dict[str, Any]] = None # kwargs for writer_model
     
     # Multi-agent specific configuration
-    supervisor_model: str = "openai:gpt-4.1" # Model for supervisor agent in multi-agent setup
-    researcher_model: str = "openai:gpt-4.1" # Model for research agents in multi-agent setup 
+    supervisor_model: str = "phi-4-mini-reasoning"  # Model for supervisor agent in multi-agent setup
+    researcher_model: str = "phi-4-mini-reasoning" # Model for research agents in multi-agent setup 
+
+    def __post_init__(self):
+        # Inject Base URL for OpenAI provider (points to local Ollama endpoint)
+        base_url = os.environ.get("BASE_URL")
+        if self.planner_provider.lower() == "openai":
+            # Use exact Ollama model ID from env
+            self.planner_model = os.environ.get("OLLAMA_LOCAL_MODEL", self.planner_model)
+        if self.writer_provider.lower() == "openai":
+            # Use exact Ollama model ID from env
+            self.writer_model = os.environ.get("OLLAMA_LOCAL_MODEL", self.writer_model)
+        if self.planner_model_kwargs is None:
+            self.planner_model_kwargs = {}
+        self.planner_model_kwargs.setdefault("base_url", base_url)
+        if self.writer_model_kwargs is None:
+            self.writer_model_kwargs = {}
+        self.writer_model_kwargs.setdefault("base_url", base_url)
 
     @classmethod
     def from_runnable_config(

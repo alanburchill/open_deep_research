@@ -88,8 +88,16 @@ async def generate_report_plan(state: ReportState, config: RunnableConfig):
     system_instructions_query = report_planner_query_writer_instructions.format(topic=topic, report_organization=report_structure, number_of_queries=number_of_queries)
 
     # Generate queries  
-    results = await structured_llm.ainvoke([SystemMessage(content=system_instructions_query),
-                                     HumanMessage(content="Generate search queries that will help with planning the sections of the report.")])
+    try:
+        results = await structured_llm.ainvoke([
+            SystemMessage(content=system_instructions_query),
+            HumanMessage(content="Generate search queries that will help with planning the sections of the report.")
+        ])
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"LLM call failed with exception: {e!r}")
+        raise
 
     # Web search
     query_list = [query.search_query for query in results.queries]
